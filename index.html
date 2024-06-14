@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Webhook Sender</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #2c2f33;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .wrapper {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+            background-color: #23272a;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        .container, .preview-container {
+            padding: 20px;
+        }
+        .container {
+            flex: 1.5;
+        }
+        .preview-container {
+            flex: 1;
+            background-color: #2c2f33;
+            border-left: 2px solid #7289da;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #7289da;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #2c2f33;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 5px #7289da;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #7289da;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5b6eae;
+        }
+        .embed-container {
+            margin-bottom: 20px;
+            background-color: #2c2f33;
+            padding: 20px;
+            border-radius: 5px;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .delete-embed {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .delete-embed:hover {
+            color: #c0392b;
+        }
+        .discord-message {
+            background-color: #36393f;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+        .discord-embed {
+            border-left: 4px solid #7289da;
+            background-color: #2f3136;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .discord-embed-title {
+            color: #7289da;
+            font-weight: bold;
+        }
+        .discord-embed-description {
+            color: #b9bbbe;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <h1>Advanced Webhook Sender</h1>
+            <form id="webhookForm">
+                <label for="webhookUrl">Webhook URL:</label>
+                <input type="text" id="webhookUrl" placeholder="Enter Webhook URL" required>
+                <label for="message">Message:</label>
+                <textarea id="message" rows="5" placeholder="Enter your message"></textarea>
+                <div id="embeds">
+                    <div class="embed-container">
+                        <label>Embed Title:</label>
+                        <input type="text" class="embed-title" placeholder="Enter Embed Title">
+                        <label>Embed Description:</label>
+                        <textarea rows="3" class="embed-description" placeholder="Enter Embed Description"></textarea>
+                        <button type="button" class="delete-embed">&times;</button>
+                    </div>
+                </div>
+                <button type="button" id="addEmbed">Add Embed</button>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+        <div class="preview-container">
+            <h2>Preview</h2>
+            <div id="preview"></div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('addEmbed').addEventListener('click', function() {
+            const embedContainer = document.createElement('div');
+            embedContainer.className = 'embed-container';
+            embedContainer.innerHTML = `
+                <label>Embed Title:</label>
+                <input type="text" class="embed-title" placeholder="Enter Embed Title">
+                <label>Embed Description:</label>
+                <textarea rows="3" class="embed-description" placeholder="Enter Embed Description"></textarea>
+                <button type="button" class="delete-embed">&times;</button>
+            `;
+            document.getElementById('embeds').appendChild(embedContainer);
+            attachDeleteEvent(embedContainer);
+            updatePreview();
+        });
+
+        function attachDeleteEvent(container) {
+            const deleteButton = container.querySelector('.delete-embed');
+            deleteButton.addEventListener('click', function() {
+                container.remove();
+                updatePreview();
+            });
+        }
+
+        function updatePreview() {
+            const message = document.getElementById('message').value;
+
+            const embeds = Array.from(document.querySelectorAll('.embed-container')).map(container => {
+                const title = container.querySelector('.embed-title').value;
+                const description = container.querySelector('.embed-description').value;
+                return { title, description };
+            }).filter(embed => embed.title || embed.description);
+
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'discord-message';
+            messageDiv.textContent = message;
+            preview.appendChild(messageDiv);
+
+            embeds.forEach(embed => {
+                const embedDiv = document.createElement('div');
+                embedDiv.className = 'discord-embed';
+                
+                if (embed.title) {
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'discord-embed-title';
+                    titleDiv.textContent = embed.title;
+                    embedDiv.appendChild(titleDiv);
+                }
+
+                if (embed.description) {
+                    const descriptionDiv = document.createElement('div');
+                    descriptionDiv.className = 'discord-embed-description';
+                    descriptionDiv.textContent = embed.description;
+                    embedDiv.appendChild(descriptionDiv);
+                }
+
+                preview.appendChild(embedDiv);
+            });
+        }
+
+        document.getElementById('webhookForm').addEventListener('input', updatePreview);
+        document.getElementById('webhookForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            const message = document.getElementById('message').value;
+
+            const embeds = Array.from(document.querySelectorAll('.embed-container')).map(container => {
+                const title = container.querySelector('.embed-title').value;
+                const description = container.querySelector('.embed-description').value;
+                return { title, description };
+            }).filter(embed => embed.title || embed.description);
+
+            const payload = {
+                content: message,
+                embeds: embeds.map(embed => ({
+                    title: embed.title,
+                    description: embed.description
+                }))
+            };
+
+            document.getElementById('preview').textContent = JSON.stringify(payload, null, 2);
+
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }).then(response => {
+                if (response.ok) {
+                    alert('Message sent successfully!');
+                } else {
+                    alert('Failed to send message. Please check the webhook URL.');
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+
+        // Initial call to update preview
+        updatePreview();
+    </script>
+</body>
+</html>
